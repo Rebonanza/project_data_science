@@ -1,0 +1,77 @@
+---
+title: "projectDataScience"
+author: "GIventheo"
+date: "2022-11-12"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load All library
+
+```{r Load all library}
+library(tidyverse) 
+library(tidytext)
+library(syuzhet)
+library(rtweet)
+library(e1071)
+library(gmodels)
+library(plyr)
+
+```
+
+## Load Data 
+
+```{r load data from API}
+## store api keys (these are fake example values; replace with your own keys)
+api_key <- "api key"
+api_secret_key <- "api secret key"
+
+## authenticate via web browser
+token <- create_token(
+  app = "app name",
+  consumer_key = api_key,
+  consumer_secret = api_secret_key)
+```
+
+```{r load data from csv}
+data<- read_csv("file origin")
+```
+
+## Search_tweets of covid 19
+
+```{r Search Tweets}
+dataTweet <- search_tweets("#COVID19", n=500, include_rts = FALSE)
+dataTweet
+```
+
+## Cleaning Data
+
+```{r Cleaning data}
+dataTweet$stripped_text1 <- gsub("http\\S+","",tweet.Kata$text)
+dataTweetClean <- dataTweet %>%
+  select(stripped_text1) %>%
+  unnest_tokens(word, stripped_text1)
+dataTweetClean <- dataTweetClean %>%
+  anti_join(stop_words)
+```
+
+## Split data to training and test
+```{r Split data}
+sampleSize <- floor(0.80 * nrow(dataTweet))
+tweet_ind <- sample(seq_len(nrow(dataTweet)), size = sampleSize)
+dataTweetTrain <- dataTweet[tweet_ind,]
+dataTweetTest <- dataTweet[-tweet_ind,]
+```
+
+## Classifier and Predict 
+```{r Classifier and Predict}
+tweets_NB_classifier <- (Final.Label ~., data = tweet_trainNB)
+tweets_NB_predict <- predict(tweets_NB_classifier,tweet_testNB)
+```
+
+
+
+
