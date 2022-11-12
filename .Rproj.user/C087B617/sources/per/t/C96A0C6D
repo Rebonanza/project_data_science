@@ -1,0 +1,26 @@
+{
+    "id": "C96A0C6D",
+    "path": "D:/Giventheo/Kuliah/Semester 5/Prak Data Science/projek_akhir/sentiment_analysis_twitter.R",
+    "project_path": "sentiment_analysis_twitter.R",
+    "type": "r_source",
+    "hash": "4074789823",
+    "contents": "",
+    "dirty": false,
+    "created": 1668097870968.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "5,4",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1668097380,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1668097380,
+    "read_only": false,
+    "read_only_alternatives": []
+}
