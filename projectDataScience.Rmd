@@ -12,9 +12,18 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Load All library
 
 ```{r Load all library}
+library(SnowballC)
+library(Rstem)
+library(twitteR)
+library(tm)
+library(NLP)
+library(SentimentAnalysis)
+library(RColorBrewer)
+library(wordcloud)
+library(sentiment)
+library(foo)
 library(tidyverse) 
 library(tidytext)
-library(syuzhet)
 library(rtweet)
 library(e1071)
 library(gmodels)
@@ -26,44 +35,65 @@ library(plyr)
 
 ```{r load data from API}
 ## store api keys (these are fake example values; replace with your own keys)
-api_key <- "api key"
-api_secret_key <- "api secret key"
+api_key <- "qqNXxBQ8AgEqGNhX0mD7dS8OT"
+api_secret_key <- "uFS4HnQkTLcyyzBC36EDDTeVTLcvuVYXjHcfJN4te7DwBIYRU9"
+bearer_token <- "AAAAAAAAAAAAAAAAAAAAAAA2jQEAAAAAJxo%2FB4RYyKCLCL%2FEsYi3h1Uw6a4%3DAQT60yS7h5It5tkY4oqhnnTri3rFwAh1bjIE6UABVkboZpL0Da"
+reqUrl <- "https://api.twitter.com/oauth/request_token"
+accUrl <- "https://api.twitter.com/oauth/access_token"
+clientId <- "MVoyLWVTMEVrWTd6OFUzTGxqbVI6MTpjaQ"
+clientSecret <- "URnCd6sUHe4nieKbfnQ1xRJUwmhNOnfCLvXN7RioBY9w07_nPa"
+accessToken <- "1592089064374534145-WnrUquFZOypLvBxkR0aOqV7udww54C"
+accessSecret <- "hcJcCMM9GEEXVxOpSRFqL8nZRNQ0iN4HFEuxgYOeWXCK0"
 
-## authenticate via web browser
-token <- create_token(
-  app = "app name",
-  consumer_key = api_key,
-  consumer_secret = api_secret_key)
+setup_twitter_oauth(clientId,clientSecret,accessToken,accessSecret)
+
 ```
 
-```{r load data from csv}
-data<- read_csv("file origin")
-```
-
-## Search_tweets of covid 19
+## Search_tweets of Booster Vaccine
 
 ```{r Search Tweets}
-dataTweet <- search_tweets("#COVID19", n=500, include_rts = FALSE)
-dataTweet
+dataTweet <- searchTwitter('booster', n=100, lang="en")
+dataTweets <- sapply(dataTweet, function(x) x$getText())
 ```
 
 ## Cleaning Data
 
 ```{r Cleaning data}
-dataTweet$stripped_text1 <- gsub("http\\S+","",tweet.Kata$text)
-dataTweetClean <- dataTweet %>%
-  select(stripped_text1) %>%
-  unnest_tokens(word, stripped_text1)
-dataTweetClean <- dataTweetClean %>%
-  anti_join(stop_words)
+dataTweetsClean <- gsub("(RT|via)((?:\\b\\w*@\\w+)+)", "",dataTweets)
+dataTweetsClean = gsub("@\\w+","",dataTweetsClean)
+dataTweetsClean = gsub("[[:punct:]]", "", dataTweetsClean)
+dataTweetsClean = gsub("[[:digit:]]", "", dataTweetsClean)
+dataTweetsClean = gsub("http\\w+","",dataTweetsClean)
+dataTweetsClean = gsub("[ \t]{2,}","",dataTweetsClean)
+dataTweetsClean = gsub("^\\s+|\\s+$","",dataTweetsClean)
+dataTweetsClean = gsub("note","",dataTweetsClean)
+
+try.error = function(x)
+{
+  y = NA
+  try.error = tryCatch(tolower(X), error=function(e) e)
+  if(!inherits(try.error, "error"))
+    y= tolower(x)
+  return(y)
+}
+dataTweetsClean = sapply(dataTweetsClean, try.error)
+dataTweetsClean = dataTweetsClean[i!is.na(dataTweetsClean)]
+names(dataTweetsClean) = NULL
 ```
 
 ## Split data to training and test
 ```{r Split data}
-sampleSize <- floor(0.80 * nrow(dataTweet))
-tweet_ind <- sample(seq_len(nrow(dataTweet)), size = sampleSize)
-dataTweetTrain <- dataTweet[tweet_ind,]
-dataTweetTest <- dataTweet[-tweet_ind,]
+class_emotion = classify_emotion(dataTweetsClean, algorithm="bayes", prior=1.0)
+emotion = class_emotion[,7]
+emotion[is.na(emotion)] = "unknown"
+class_polar = classify_polarity(dataTweetsClean, algorithm="bayes")
+polar = class_polar[,4]
+
+
+dfTweets = data.frame(text=dataTweetsClean, emotion=emotion, polaity=polar, stringAsFactors = FALSE)
+
+dfTweets = within(dfTweets, emotion <- factor(emotion, levels=names(sort((table(emotion),)))))
+
 ```
 
 ## Classifier and Predict 

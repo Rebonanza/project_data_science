@@ -11,9 +11,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## # %% [markdown] {"_execution_state":"idle"}
 # ## Importing packages
+```{r}
  library(tidyverse) # metapackage with lots of helpful functions
  library(tidytext) # tidy implimentation of NLP methods
  library(syuzhet)
+```
 # # read in our data
  news <- read_csv("../input/fake.csv")
 # 
