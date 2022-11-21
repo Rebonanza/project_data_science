@@ -12,22 +12,31 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Load All library
 
 ```{r Load all library}
+
+library(openssl)
+library(httpuv)
+library(rtweet)
 library(SnowballC)
-library(Rstem)
-library(twitteR)
+library(httr)
+#library(twitteR)
+#library(Rstem)
+library(textdata)
+library(purrr)
 library(tm)
 library(NLP)
 library(SentimentAnalysis)
 library(RColorBrewer)
 library(wordcloud)
-library(sentiment)
-library(foo)
+#library(sentiment)
+#library(foo)
 library(tidyverse) 
 library(tidytext)
-library(rtweet)
 library(e1071)
 library(gmodels)
 library(plyr)
+library(plotly)
+library(DT)
+library(sass)
 
 ```
 
@@ -35,38 +44,57 @@ library(plyr)
 
 ```{r load data from API}
 ## store api keys (these are fake example values; replace with your own keys)
-api_key <- "qqNXxBQ8AgEqGNhX0mD7dS8OT"
-api_secret_key <- "uFS4HnQkTLcyyzBC36EDDTeVTLcvuVYXjHcfJN4te7DwBIYRU9"
-bearer_token <- "AAAAAAAAAAAAAAAAAAAAAAA2jQEAAAAAJxo%2FB4RYyKCLCL%2FEsYi3h1Uw6a4%3DAQT60yS7h5It5tkY4oqhnnTri3rFwAh1bjIE6UABVkboZpL0Da"
-reqUrl <- "https://api.twitter.com/oauth/request_token"
-accUrl <- "https://api.twitter.com/oauth/access_token"
+api_key <- "FBox1hjtTDLO3VZvyKWIZx77j"
+api_secret_key <- "b3oOc7sGKHrzCdlHjFP8L6U5zWOdhSiEv3g3TJAfwQ02EV6IW5"
+bearer_token <- "AAAAAAAAAAAAAAAAAAAAAF4YjgEAAAAADwzHHipo40WWiP%2F7NYjSaRvL5Gk%3DmLyBXX31ggRKxdEYkNmIid8uEKkzKiQ951aO1lJgE1qvzBC3JS"
 clientId <- "MVoyLWVTMEVrWTd6OFUzTGxqbVI6MTpjaQ"
 clientSecret <- "URnCd6sUHe4nieKbfnQ1xRJUwmhNOnfCLvXN7RioBY9w07_nPa"
-accessToken <- "1592089064374534145-WnrUquFZOypLvBxkR0aOqV7udww54C"
-accessSecret <- "hcJcCMM9GEEXVxOpSRFqL8nZRNQ0iN4HFEuxgYOeWXCK0"
+accessToken <- "1592089064374534145-6hpvtXEwCUBMK7wbZCIXaRXTlarEWc"
+accessSecret <- "h35r7DP0dR4AcUwBQqUXE5diaPTDkY7TEm4s41cT9X3xp"
 
-setup_twitter_oauth(clientId,clientSecret,accessToken,accessSecret)
+token = create_token(
+  app = "sentimentAnalysisBooster",
+  consumer_key = api_key,
+  consumer_secret = api_secret_key,
+  access_token = accessToken,
+  access_secret = accessSecret,
+  set_renv = TRUE
+)
+
+auth_save(token, "tweetAccess")
+auth_as("tweetAccess")
+auth_sitrep()
 
 ```
 
 ## Search_tweets of Booster Vaccine
 
 ```{r Search Tweets}
-dataTweet <- searchTwitter('booster', n=100, lang="en")
-dataTweets <- sapply(dataTweet, function(x) x$getText())
+dataVaksinCovid <- search_tweets('#vaksincovid19', n=500, include_rts=FALSE)
+dataVaksinBooster <- search_tweets('#vaksinbooster', n=500, include_rts=FALSE)
+dataVaksin <- search_tweets('#vaksin', n=500, include_rts=FALSE)
+dataBooster <- search_tweets('#booster', n=500, include_rts=FALSE)
+
+#dataTweets <- sapply(dataTweet, function(x) x$getText())
 ```
+
+```{r}
+data <- rbind(dataVaksinCovid, dataVaksin, dataVaksinBooster, dataBooster)
+data <- data %>% select(full_text)
+```
+
 
 ## Cleaning Data
 
 ```{r Cleaning data}
-dataTweetsClean <- gsub("(RT|via)((?:\\b\\w*@\\w+)+)", "",dataTweets)
-dataTweetsClean = gsub("@\\w+","",dataTweetsClean)
-dataTweetsClean = gsub("[[:punct:]]", "", dataTweetsClean)
-dataTweetsClean = gsub("[[:digit:]]", "", dataTweetsClean)
-dataTweetsClean = gsub("http\\w+","",dataTweetsClean)
-dataTweetsClean = gsub("[ \t]{2,}","",dataTweetsClean)
-dataTweetsClean = gsub("^\\s+|\\s+$","",dataTweetsClean)
-dataTweetsClean = gsub("note","",dataTweetsClean)
+dataClean <- gsub("(RT|via)((?:\\b\\w*@\\w+)+)", "",data)
+dataClean = gsub("@\\w+","",dataClean)
+dataClean = gsub("[[:punct:]]", "", dataClean)
+dataClean = gsub("[[:digit:]]", "", dataClean)
+dataClean = gsub("http\\w+","",dataClean)
+dataClean = gsub("[ \t]{2,}","",dataClean)
+dataClean = gsub("^\\s+|\\s+$","",dataClean)
+dataClean = gsub("note","",dataClean)
 
 try.error = function(x)
 {
@@ -76,9 +104,9 @@ try.error = function(x)
     y= tolower(x)
   return(y)
 }
-dataTweetsClean = sapply(dataTweetsClean, try.error)
-dataTweetsClean = dataTweetsClean[i!is.na(dataTweetsClean)]
-names(dataTweetsClean) = NULL
+dataClean = sapply(dataClean, try.error)
+dataClean = dataClean[!is.na(dataClean)]
+names(dataClean) = NULL
 ```
 
 ## Split data to training and test
@@ -100,6 +128,79 @@ dfTweets = within(dfTweets, emotion <- factor(emotion, levels=names(sort((table(
 ```{r Classifier and Predict}
 tweets_NB_classifier <- (Final.Label ~., data = tweet_trainNB)
 tweets_NB_predict <- predict(tweets_NB_classifier,tweet_testNB)
+```
+
+## Plotting the data into graph
+```{r ggplot and plotly}
+
+```
+
+## Visualize data with shiny to website
+```{r shiny web framework}
+# UI 
+ui <- fluidPage(
+  title = "Air Quality",
+  headerPanel("Air Quality of Kota Bandung"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(inputId = "station",
+                  label =  "Station",
+                  choices = option_station,
+                  multiple = TRUE,
+                  selected = option_station[[1]]),
+      selectInput(inputId = "parameter",
+                  label = "Parameter",
+                  choices = option_parameter,
+                  selected = "03"),
+      textInput(inputId = "parameter_label",
+                label = "Label for parameter",
+                value = ""),
+      textInput( inputId = "plot_title",
+                 label = "Title of Plot",
+                 value = ""),
+      dateRangeInput( inputId = "date",
+                      label = "Date of Graphics",
+                      start = "2017-01-01",
+                      end = "2017-03-30",
+      ),
+    ),
+    mainPanel(
+      plotlyOutput(outputId = "aq_plot")
+     
+    )
+  )
+)
+
+# Backend
+server <- function(input, output, session) {
+  
+  aq_plot <- reactive({
+    mulai <- format(input$date[[1]])
+    akhir <- format(input$date[[2]])
+    
+    udara_bandung %>%
+      filter(station %in% input$station) %>%
+      filter(day >= mulai & day <= akhir) %>%
+      ggplot(aes_string(x = "day", y = input$parameter, colour = "station")) +
+      geom_line() +
+      scale_x_date(date_breaks = "1 weeks") +
+      labs(
+        x = "",
+        y = ifelse(input$parameter_label == "", input$parameter, input$parameter_label),
+        colour = "Station",
+        title = input$plot_title
+      ) +
+      theme_light()
+  })
+  
+
+  
+  output$aq_plot <- renderPlotly({
+    ggplotly(aq_plot())
+  })
+  
+
+}
 ```
 
 
