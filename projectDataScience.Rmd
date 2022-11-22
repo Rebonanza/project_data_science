@@ -9,6 +9,10 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+install.packages('Rstem', repos = "http://www.omegahat.net/R")
+```
+
 ## Load All library
 
 ```{r Load all library}
@@ -32,6 +36,8 @@ library(wordcloud)
 library(tidyverse) 
 library(tidytext)
 library(e1071)
+library(caret)
+library(syuzhet)
 library(gmodels)
 library(plyr)
 library(plotly)
@@ -86,48 +92,55 @@ data <- data %>% select(full_text)
 
 ## Cleaning Data
 
-```{r Cleaning data}
-dataClean <- gsub("(RT|via)((?:\\b\\w*@\\w+)+)", "",data)
-dataClean = gsub("@\\w+","",dataClean)
-dataClean = gsub("[[:punct:]]", "", dataClean)
-dataClean = gsub("[[:digit:]]", "", dataClean)
-dataClean = gsub("http\\w+","",dataClean)
-dataClean = gsub("[ \t]{2,}","",dataClean)
-dataClean = gsub("^\\s+|\\s+$","",dataClean)
-dataClean = gsub("note","",dataClean)
+```{r}
+data1 <-  Corpus(VectorSource(data$full_text))
+removeLink <- function(d) gsub("http[^[:space:]]*","",d)
+dataClean <- tm_map(data1, removeLink)
+removenl <- function(d) gsub("\n"," ",d)
+dataClean <- tm_map(dataClean, removenl)
+removeComma <- function(d) gsub(",","",d)
+dataClean <- tm_map(dataClean, removeComma)
+removeTitik2 <- function(d) gsub(":","",d)
+dataClean <- tm_map(dataClean, removeTitik2)
+removeTitikKoma <- function(d) gsub(";","",d)
+dataClean <- tm_map(dataClean, removeTitikKoma)
+removeAmp <- function(d) gsub("&amp","",d)
+dataClean <- tm_map(dataClean, removeAmp)
+removeun <- function(d) gsub("@\\w+","",d)
+dataClean <- tm_map(dataClean, removeun)
+remove.all <- function(d) gsub("[^[:alpha:][:space:]]","",d)
+dataClean <- tm_map(dataClean, remove.all)
+dataClean <- tm_map(dataClean, removePunctuation)
+dataClean <- tm_map(dataClean, tolower)
+df <- data.frame(text=unlist(sapply(dataClean,'[')),stringAsFactors=F)
+write.csv(df,file="dataTwitterClean.csv")
 
-try.error = function(x)
-{
-  y = NA
-  try.error = tryCatch(tolower(X), error=function(e) e)
-  if(!inherits(try.error, "error"))
-    y= tolower(x)
-  return(y)
-}
-dataClean = sapply(dataClean, try.error)
-dataClean = dataClean[!is.na(dataClean)]
-names(dataClean) = NULL
+```
+
+
+```{r}
+data$stripped_text1 <- gsub("http\\S+","",data$full_text)
+data <- data %>% 
+  select(stripped_text1) %>% 
+  unnest_tokens(word, stripped_text1)
+```
+
+```{r}
+cleanedData <- data %>%
+  anti_join(stop_words)
 ```
 
 ## Split data to training and test
 ```{r Split data}
-class_emotion = classify_emotion(dataTweetsClean, algorithm="bayes", prior=1.0)
-emotion = class_emotion[,7]
-emotion[is.na(emotion)] = "unknown"
-class_polar = classify_polarity(dataTweetsClean, algorithm="bayes")
-polar = class_polar[,4]
-
-
-dfTweets = data.frame(text=dataTweetsClean, emotion=emotion, polaity=polar, stringAsFactors = FALSE)
-
-dfTweets = within(dfTweets, emotion <- factor(emotion, levels=names(sort((table(emotion),)))))
+dataChar <- as.character(df$text)
+sentiment <- get_nrc_sentiment(dataChar)
+mergeData <- cbind(df$text,sentiment)
+par(mar=rep(3,4))
 
 ```
 
 ## Classifier and Predict 
 ```{r Classifier and Predict}
-tweets_NB_classifier <- (Final.Label ~., data = tweet_trainNB)
-tweets_NB_predict <- predict(tweets_NB_classifier,tweet_testNB)
 ```
 
 ## Plotting the data into graph
