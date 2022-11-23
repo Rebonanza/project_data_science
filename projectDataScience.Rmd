@@ -22,8 +22,7 @@ library(httpuv)
 library(rtweet)
 library(SnowballC)
 library(httr)
-#library(twitteR)
-#library(Rstem)
+library(RTextTools)
 library(textdata)
 library(purrr)
 library(tm)
@@ -31,8 +30,6 @@ library(NLP)
 library(SentimentAnalysis)
 library(RColorBrewer)
 library(wordcloud)
-#library(sentiment)
-#library(foo)
 library(tidyverse) 
 library(tidytext)
 library(e1071)
@@ -136,6 +133,43 @@ dataChar <- as.character(df$text)
 sentiment <- get_nrc_sentiment(dataChar)
 mergeData <- cbind(df$text,sentiment)
 par(mar=rep(3,4))
+
+```
+
+```{r split data 2}
+newData <- read.csv(file="dataTwitterClean.csv")
+glimpse(newData)
+set.seed(20)
+newData<-newData[sample(nrow(newData)),]
+newData<-newData[sample(nrow(newData)),]
+glimpse(newData)
+corpus<-Corpus(VectorSource(newData$text))
+corpus
+corpus.clean <- corpus%>%
+  tm_map(content_transformer(tolower))%>%
+  tm_map(removePunctuation)%>%
+  tm_map((removeNumbers))%>%
+  tm_map(removeWords,stopwords())%>%
+  tm_map(stripWhitespace)
+dtm<-DocumentTermMatrix(corpus.clean)
+newData.train <- newData[1:50,]
+newData.test <- newData[51:100,]
+dtm.train <- dtm[1:50,]
+dtm.test <- dtm[51:64,]
+corpus.clean.train <- corpus.clean[1:50]
+corpus.clean.test <- corpus.clean[51:100]
+dim(dtm.train)
+fivefreq <- findFreqTerms(dtm.train,5)
+length(fivefreq)
+dtm.train.nb <- DocumentTermMatrix(corpus.clean.train,control = list(dictionary=fivefreq))
+dtm.test.nb <- DocumentTermMatrix(corpus.clean.test,control = list(dictionary=fivefreq))
+convertCount <- function(x){
+  y<-ifelse(x>0,1,0)
+  y<-factor(y,levels=c(0,1),labels = c("no","yes"))
+  y
+}
+trainNB<-apply(dtm.train.nb,2,convertCount)
+testNB<-apply(dtm.test.nb,1,convertCount)
 
 ```
 
